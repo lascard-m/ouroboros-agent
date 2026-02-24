@@ -174,6 +174,54 @@ Full text: [BIBLE.md](BIBLE.md)
 
 ## Configuration
 
+### Configuration Multi-LLM (Nouveau)
+
+Le projet supporte désormais plusieurs fournisseurs de LLM. Vous pouvez choisir le fournisseur via la variable d'environnement `LLM_PROVIDER` dans votre fichier `.env`.
+
+Valeurs possibles pour `LLM_PROVIDER` :
+- `openrouter` (par défaut)
+- `openai`
+- `ollama` (pour les modèles locaux)
+- `mistral`
+- `gemini`
+
+### Variables d'environnement requises par fournisseur
+
+Ajoutez ces variables dans votre fichier `.env` selon le fournisseur choisi :
+
+**OpenRouter (Défaut)**
+```env
+LLM_PROVIDER=openrouter
+OPENROUTER_API_KEY=votre_cle_ici
+```
+
+**OpenAI**
+```env
+LLM_PROVIDER=openai
+OPENAI_API_KEY=votre_cle_ici
+```
+
+**Ollama (Local)**
+Assurez-vous qu'Ollama tourne (par défaut sur http://localhost:11434).
+```env
+LLM_PROVIDER=ollama
+OLLAMA_BASE_URL=http://localhost:11434/v1  # Optionnel si par défaut
+```
+
+**Mistral AI**
+```env
+LLM_PROVIDER=mistral
+MISTRAL_API_KEY=votre_cle_ici
+```
+
+**Google Gemini**
+```env
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=votre_cle_ici
+```
+
+### Configuration Générale (Existant)
+
 ### Required Secrets (Colab Secrets or environment variables)
 
 | Variable | Description |

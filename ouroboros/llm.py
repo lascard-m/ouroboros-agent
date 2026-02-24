@@ -103,36 +103,101 @@ def fetch_openrouter_pricing() -> Dict[str, Tuple[float, float, float]]:
 
 
 class LLMClient:
-    """OpenRouter API wrapper. All LLM calls go through this class."""
+    """Multi-provider LLM API wrapper. Supports OpenRouter, OpenAI, Ollama, Mistral, Gemini."""
 
     def __init__(
         self,
         api_key: Optional[str] = None,
-        base_url: str = "https://openrouter.ai/api/v1",
+        base_url: Optional[str] = None,
+        provider: Optional[str] = None,
     ):
-        self._api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
-        self._base_url = base_url
-        self._client = None
+        # Initialize clients for all available providers
+        self._clients = {}
+        
+        # OpenRouter
+        or_key = os.environ.get("OPENROUTER_API_KEY", "")
+        if or_key:
+            self._clients["openrouter"] = {
+                "client": None,
+                "api_key": or_key,
+                "base_url": "https://openrouter.ai/api/v1"
+            }
+        
+        # OpenAI
+        oai_key = os.environ.get("OPENAI_API_KEY", "")
+        if oai_key:
+            self._clients["openai"] = {
+                "client": None,
+                "api_key": oai_key,
+                "base_url": "https://api.openai.com/v1"
+            }
+        
+        # Ollama
+        if os.environ.get("OLLAMA_BASE_URL"):
+            self._clients["ollama"] = {
+                "client": None,
+                "api_key": "ollama",
+                "base_url": os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+            }
+        
+        # Mistral
+        mistral_key = os.environ.get("MISTRAL_API_KEY", "")
+        if mistral_key:
+            self._clients["mistral"] = {
+                "client": None,
+                "api_key": mistral_key,
+                "base_url": "https://api.mistral.ai/v1"
+            }
+        
+        # Gemini
+        gemini_key = os.environ.get("GEMINI_API_KEY", "")
+        if gemini_key:
+            self._clients["gemini"] = {
+                "client": None,
+                "api_key": gemini_key,
+                "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/"
+            }
+        
+        # Fallback to openrouter if no clients
+        if not self._clients:
+            log.warning("No LLM providers configured. Set API keys for OPENROUTER_API_KEY, OPENAI_API_KEY, etc.")
+            self._clients["openrouter"] = {
+                "client": None,
+                "api_key": "",
+                "base_url": "https://openrouter.ai/api/v1"
+            }
 
-    def _get_client(self):
-        if self._client is None:
+    def _get_client_for_provider(self, provider: str):
+        if provider not in self._clients:
+            raise ValueError(f"Provider {provider} not configured")
+        
+        if self._clients[provider]["client"] is None:
             from openai import OpenAI
-            self._client = OpenAI(
-                base_url=self._base_url,
-                api_key=self._api_key,
-                default_headers={
-                    "HTTP-Referer": "https://colab.research.google.com/",
-                    "X-Title": "Ouroboros",
-                },
+            self._clients[provider]["client"] = OpenAI(
+                base_url=self._clients[provider]["base_url"],
+                api_key=self._clients[provider]["api_key"],
             )
-        return self._client
+        return self._clients[provider]["client"]
 
-    def _fetch_generation_cost(self, generation_id: str) -> Optional[float]:
+    def _parse_provider_from_model(self, model: str) -> Tuple[str, str]:
+        """Extract provider and model name from model string."""
+        if '/' in model:
+            provider, model_name = model.split('/', 1)
+            if provider in self._clients:
+                return provider, model_name
+        # Default to openrouter
+        return "openrouter", model
+
+    def _fetch_generation_cost(self, generation_id: str, provider: str = "openrouter") -> Optional[float]:
         """Fetch cost from OpenRouter Generation API as fallback."""
+        if provider != "openrouter" or "openrouter" not in self._clients:
+            return None
+        base_url = self._clients["openrouter"]["base_url"]
+        api_key = self._clients["openrouter"]["api_key"]
         try:
             import requests
-            url = f"{self._base_url.rstrip('/')}/generation?id={generation_id}"
-            resp = requests.get(url, headers={"Authorization": f"Bearer {self._api_key}"}, timeout=5)
+            url = f"{base_url.rstrip('/')}/generation?id={generation_id}"
+            resp = requests.get(url, headers={"Authorization": f"Bearer {api_key}"}, timeout=5)
             if resp.status_code == 200:
                 data = resp.json().get("data") or {}
                 cost = data.get("total_cost") or data.get("usage", {}).get("cost")
@@ -140,7 +205,7 @@ class LLMClient:
                     return float(cost)
             # Generation might not be ready yet — retry once after short delay
             time.sleep(0.5)
-            resp = requests.get(url, headers={"Authorization": f"Bearer {self._api_key}"}, timeout=5)
+            resp = requests.get(url, headers={"Authorization": f"Bearer {api_key}"}, timeout=5)
             if resp.status_code == 200:
                 data = resp.json().get("data") or {}
                 cost = data.get("total_cost") or data.get("usage", {}).get("cost")
@@ -161,71 +226,67 @@ class LLMClient:
         tool_choice: str = "auto",
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Single LLM call. Returns: (response_message_dict, usage_dict with cost)."""
-        client = self._get_client()
-        effort = normalize_reasoning_effort(reasoning_effort)
-
-        extra_body: Dict[str, Any] = {
-            "reasoning": {"effort": effort, "exclude": True},
-        }
-
-        # Pin Anthropic models to Anthropic provider for prompt caching
-        if model.startswith("anthropic/"):
-            extra_body["provider"] = {
-                "order": ["Anthropic"],
-                "allow_fallbacks": False,
-                "require_parameters": True,
-            }
-
-        kwargs: Dict[str, Any] = {
-            "model": model,
+        provider, model_name = self._parse_provider_from_model(model)
+        client = self._get_client_for_provider(provider)
+        
+        # Prepare arguments
+        kwargs = {
+            "model": model_name,
             "messages": messages,
             "max_tokens": max_tokens,
-            "extra_body": extra_body,
         }
+
         if tools:
-            # Add cache_control to last tool for Anthropic prompt caching
-            # This caches all tool schemas (they never change between calls)
-            tools_with_cache = [t for t in tools]  # shallow copy
-            if tools_with_cache:
-                last_tool = {**tools_with_cache[-1]}  # copy last tool
-                last_tool["cache_control"] = {"type": "ephemeral", "ttl": "1h"}
-                tools_with_cache[-1] = last_tool
-            kwargs["tools"] = tools_with_cache
+            kwargs["tools"] = tools
             kwargs["tool_choice"] = tool_choice
 
-        resp = client.chat.completions.create(**kwargs)
-        resp_dict = resp.model_dump()
-        usage = resp_dict.get("usage") or {}
-        choices = resp_dict.get("choices") or [{}]
-        msg = (choices[0] if choices else {}).get("message") or {}
+        # Provider-specific logic
+        if provider == "openrouter":
+            effort = normalize_reasoning_effort(reasoning_effort)
+            extra_body: Dict[str, Any] = {
+                "reasoning": {"effort": effort, "exclude": True},
+            }
+            # Pin Anthropic models to Anthropic provider for prompt caching
+            if model_name.startswith("anthropic/"):
+                extra_body["provider"] = {
+                    "order": ["Anthropic"],
+                    "allow_fallbacks": False,
+                    "require_parameters": True,
+                }
+            kwargs["extra_body"] = extra_body
 
-        # Extract cached_tokens from prompt_tokens_details if available
-        if not usage.get("cached_tokens"):
-            prompt_details = usage.get("prompt_tokens_details") or {}
-            if isinstance(prompt_details, dict) and prompt_details.get("cached_tokens"):
-                usage["cached_tokens"] = int(prompt_details["cached_tokens"])
+        try:
+            completion = client.chat.completions.create(**kwargs)
+        except Exception as e:
+            print(f"Error calling LLM ({provider}): {e}")
+            raise e
 
-        # Extract cache_write_tokens from prompt_tokens_details if available
-        # OpenRouter: "cache_write_tokens"
-        # Native Anthropic: "cache_creation_tokens" or "cache_creation_input_tokens"
-        if not usage.get("cache_write_tokens"):
-            prompt_details_for_write = usage.get("prompt_tokens_details") or {}
-            if isinstance(prompt_details_for_write, dict):
-                cache_write = (prompt_details_for_write.get("cache_write_tokens")
-                              or prompt_details_for_write.get("cache_creation_tokens")
-                              or prompt_details_for_write.get("cache_creation_input_tokens"))
-                if cache_write:
-                    usage["cache_write_tokens"] = int(cache_write)
+        response_message = completion.choices[0].message
+        usage = completion.usage
 
-        # Ensure cost is present in usage (OpenRouter includes it, but fallback if missing)
-        if not usage.get("cost"):
-            gen_id = resp_dict.get("id") or ""
-            if gen_id:
-                cost = self._fetch_generation_cost(gen_id)
-                if cost is not None:
-                    usage["cost"] = cost
+        # Convert usage to dict and add cost
+        usage_dict = {
+            "prompt_tokens": usage.prompt_tokens,
+            "completion_tokens": usage.completion_tokens,
+            "total_tokens": usage.total_tokens,
+            "cost": 0.0,  # Default cost
+        }
 
-        return msg, usage
+        # Only calculate cost for OpenRouter for now
+        if provider == "openrouter":
+            # Attempt to get cost from response or fallback to generation API
+            if hasattr(usage, "cost") and usage.cost is not None:
+                usage_dict["cost"] = usage.cost
+            else:
+                # OpenRouter fallback
+                resp_dict = completion.model_dump()
+                gen_id = resp_dict.get("id") or ""
+                if gen_id:
+                    cost = self._fetch_generation_cost(gen_id, provider)
+                    if cost is not None:
+                        usage_dict["cost"] = cost
+
+        return response_message.model_dump(), usage_dict
 
     def vision_query(
         self,

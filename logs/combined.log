@@ -1,0 +1,12 @@
+{"database":"postgres","host":"localhost","level":"info","message":"Initializing PostgreSQL MCP Server","timestamp":"2026-02-24T17:11:44.452Z","toolCount":11}
+{"event":"pool_created","level":"info","max":10,"message":"Database connection event","min":2,"ssl":false,"timestamp":"2026-02-24T17:11:44.457Z","type":"database_connection"}
+{"level":"info","message":"PostgreSQL MCP Server running with 11 tools","timestamp":"2026-02-24T17:11:44.466Z"}
+{"event":"client_connected","level":"info","message":"Database connection event","timestamp":"2026-02-24T17:11:44.663Z","totalConnections":1,"type":"database_connection"}
+{"event":"client_acquired","level":"info","message":"Database connection event","timestamp":"2026-02-24T17:11:44.664Z","type":"database_connection"}
+{"event":"client_released","level":"info","message":"Database connection event","timestamp":"2026-02-24T17:11:45.391Z","type":"database_connection"}
+{"database":"postgres","host":"localhost","level":"info","message":"Initializing PostgreSQL MCP Server","timestamp":"2026-02-24T18:59:10.469Z","toolCount":11}
+{"event":"pool_created","level":"info","max":10,"message":"Database connection event","min":2,"ssl":false,"timestamp":"2026-02-24T18:59:10.472Z","type":"database_connection"}
+{"level":"info","message":"PostgreSQL MCP Server running with 11 tools","timestamp":"2026-02-24T18:59:10.479Z"}
+{"event":"client_connected","level":"info","message":"Database connection event","timestamp":"2026-02-24T18:59:11.139Z","totalConnections":1,"type":"database_connection"}
+{"event":"client_acquired","level":"info","message":"Database connection event","timestamp":"2026-02-24T18:59:11.140Z","type":"database_connection"}
+{"event":"client_released","level":"info","message":"Database connection event","timestamp":"2026-02-24T18:59:11.149Z","type":"database_connection"}

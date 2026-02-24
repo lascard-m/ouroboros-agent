@@ -18,6 +18,17 @@ log = logging.getLogger(__name__)
 
 
 def _run_shell(ctx: ToolContext, cmd, cwd: str = "") -> str:
+    # Sandbox mode check
+    if os.environ.get("SANDBOX_MODE") == "true":
+        forbidden_commands = [
+            "rm", "del", "format", "fdisk", "mkfs", "dd", "shutdown", "reboot", "halt",
+            "poweroff", "init", "systemctl", "service", "kill", "killall", "pkill",
+            "chmod", "chown", "sudo", "su", "passwd", "usermod", "userdel", "mount", "umount"
+        ]
+        cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
+        if any(f in cmd_str.lower() for f in forbidden_commands):
+            return f"SANDBOX BLOCKED: Command contains forbidden operation: {cmd_str}"
+    
     # Recover from LLM sending cmd as JSON string instead of list
     if isinstance(cmd, str):
         raw_cmd = cmd
