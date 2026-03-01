@@ -548,7 +548,7 @@ class OuroborosAgent:
             }
             result_file = results_dir / f"{task.get('id')}.json"
             tmp_file = results_dir / f"{task.get('id')}.json.tmp"
-            tmp_file.write_text(json.dumps(result_data, ensure_ascii=False, indent=2))
+            tmp_file.write_text(json.dumps(result_data, ensure_ascii=False, indent=2), encoding="utf-8")
             os.rename(tmp_file, result_file)
         except Exception as e:
             log.warning("Failed to store task result: %s", e)

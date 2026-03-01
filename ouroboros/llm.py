@@ -182,10 +182,15 @@ class LLMClient:
     def _parse_provider_from_model(self, model: str) -> Tuple[str, str]:
         """Extract provider and model name from model string."""
         if '/' in model:
-            provider, model_name = model.split('/', 1)
-            if provider in self._clients:
-                return provider, model_name
-        # Default to openrouter
+            parts = model.split('/', 1)
+            provider_candidate = parts[0].lower()
+            if provider_candidate in self._clients:
+                return provider_candidate, parts[1]
+        
+        # Default logic for OpenRouter prefixes
+        if model.startswith(("anthropic/", "openai/", "google/", "meta-llama/", "mistralai/", "qwen/")):
+            return "openrouter", model
+            
         return "openrouter", model
 
     def _fetch_generation_cost(self, generation_id: str, provider: str = "openrouter") -> Optional[float]:
@@ -230,20 +235,21 @@ class LLMClient:
         # Define fallback chain for free models
         fallbacks = [
             model, # Try requested first
-            "openrouter/openrouter/free", # Mistral Small on OpenRouter
-            "gemini/google/gemini-2.0-flash-lite-preview-02-05:free", # Gemini Studio Direct
-            "openrouter/google/gemini-2.0-flash-lite-preview-02-05:free", # Gemini on OpenRouter
-            "mistral/mistral-small-latest", # Mistral Direct (if free tier available)
+            "openrouter/mistralai/mistral-7b-instruct:free", # Valid free ID on OpenRouter
+            "openrouter/google/gemini-2.0-flash-lite-001", # High availability free model on OpenRouter
+            "gemini/gemini-2.0-flash-lite-preview-02-05", # Gemini Studio Direct
+            "mistral/mistral-small-latest", # Mistral Direct
         ]
         
         # Remove duplicates while preserving order
         unique_fallbacks = []
         for f in fallbacks:
-            if f not in unique_fallbacks:
+            if f and f not in unique_fallbacks:
                 unique_fallbacks.append(f)
         
         last_error = None
         for current_model in unique_fallbacks:
+            provider = "unknown"
             try:
                 provider, model_name = self._parse_provider_from_model(current_model)
                 client = self._get_client_for_provider(provider)
@@ -280,18 +286,21 @@ class LLMClient:
 
                 completion = client.chat.completions.create(**kwargs)
                 
+                if not completion or not completion.choices:
+                    raise ValueError(f"Empty response from {provider}")
+
                 response_message = completion.choices[0].message
-                usage = completion.usage
+                usage = getattr(completion, "usage", None)
 
                 usage_dict = {
-                    "prompt_tokens": usage.prompt_tokens,
-                    "completion_tokens": usage.completion_tokens,
-                    "total_tokens": usage.total_tokens,
+                    "prompt_tokens": getattr(usage, "prompt_tokens", 0) if usage else 0,
+                    "completion_tokens": getattr(usage, "completion_tokens", 0) if usage else 0,
+                    "total_tokens": getattr(usage, "total_tokens", 0) if usage else 0,
                     "cost": 0.0,
                 }
 
                 if provider == "openrouter":
-                    if hasattr(usage, "cost") and usage.cost is not None:
+                    if usage and hasattr(usage, "cost") and usage.cost is not None:
                         usage_dict["cost"] = usage.cost
                     else:
                         resp_dict = completion.model_dump()
