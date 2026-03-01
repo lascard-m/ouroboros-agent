@@ -9,16 +9,19 @@
   "spent_tokens_completion": 0,
   "spent_tokens_cached": 0,
   "session_id": "19e271ff38de451a9d565d4968e3d08b",
-  "current_branch": null,
-  "current_sha": null,
+  "current_branch": "ouroboros",
+  "current_sha": "66d9092a508e16626aca871c89296210b41c4a5f",
   "last_owner_message_at": "",
   "last_evolution_task_at": "",
   "budget_messages_since_report": 0,
   "evolution_mode_enabled": false,
   "evolution_cycle": 0,
-  "session_total_snapshot": 0.0,
+  "session_total_snapshot": 2.28193955,
   "session_spent_snapshot": 0.0,
   "budget_drift_pct": null,
   "budget_drift_alert": false,
-  "evolution_consecutive_failures": 0
+  "evolution_consecutive_failures": 0,
+  "openrouter_total_usd": 2.28193955,
+  "openrouter_daily_usd": 0.0,
+  "openrouter_last_check_at": "2026-03-01T14:48:11.464020+00:00"
 }
