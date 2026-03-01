@@ -230,6 +230,10 @@ class LLMClient:
         client = self._get_client_for_provider(provider)
         
         # Prepare arguments
+        env_max = int(os.environ.get("OUROBOROS_MAX_TOKENS", "0"))
+        if env_max > 0:
+            max_tokens = min(max_tokens, env_max)
+
         kwargs = {
             "model": model_name,
             "messages": messages,

@@ -11,6 +11,8 @@ log = logging.getLogger(__name__)
 # 0) Install launcher deps
 # ----------------------------
 def install_launcher_deps() -> None:
+    # Force UTF-8 encoding for Windows consoles
+    os.environ["PYTHONIOENCODING"] = "utf-8"
     print("1. Installation des dépendances...")
     try:
         subprocess.run(
