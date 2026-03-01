@@ -180,18 +180,17 @@ class LLMClient:
         return self._clients[provider]["client"]
 
     def _parse_provider_from_model(self, model: str) -> Tuple[str, str]:
-        """Extract provider and model name from model string."""
-        if '/' in model:
-            parts = model.split('/', 1)
-            provider_candidate = parts[0].lower()
-            if provider_candidate in self._clients:
-                return provider_candidate, parts[1]
-        
-        # Default logic for OpenRouter prefixes
-        if model.startswith(("anthropic/", "openai/", "google/", "meta-llama/", "mistralai/", "qwen/")):
-            return "openrouter", model
-            
-        return "openrouter", model
+        """Ex: 'openrouter/anthropic/claude-3' -> ('openrouter', 'anthropic/claude-3')"""
+        if "/" in model:
+            parts = model.split("/", 1)
+            provider = parts[0].lower()
+            model_id = parts[1]
+            if provider == "openrouter" and model_id == "free":
+                # Special case: 'openrouter/free' is a valid model ID on OpenRouter
+                return "openrouter", "openrouter/free"
+            if provider in ["openrouter", "openai", "mistral", "gemini", "anthropic"]:
+                return provider, model_id
+        return self.default_provider, model
 
     def _fetch_generation_cost(self, generation_id: str, provider: str = "openrouter") -> Optional[float]:
         """Fetch cost from OpenRouter Generation API as fallback."""
@@ -232,12 +231,17 @@ class LLMClient:
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Single LLM call with fallback support. Returns: (response_message_dict, usage_dict with cost)."""
         
-        # Define fallback chain for free models
+        # Map generic 'free' to OpenRouter's free router
+        if model.lower() == "free":
+            model = "openrouter/free"
+
+        # Define fallback chain for free models (IDs verified 2026-03-02)
         fallbacks = [
             model, # Try requested first
-            "openrouter/free", # Global free router on OpenRouter
-            "openrouter/mistralai/mistral-7b-instruct:free", # Valid free ID on OpenRouter
-            "openrouter/google/gemini-2.0-flash-lite-001", # High availability free model on OpenRouter
+            "openrouter/free", # Global free router on OpenRouter (requires full ID)
+            "mistralai/mistral-small-3.1-24b-instruct:free", # Stable Mistral replacement
+            "meta-llama/llama-3.3-70b-instruct:free", # Powerful 70B model
+            "google/gemini-2.0-flash-lite-preview-02-05:free", # Gemini Free tier
             "gemini/gemini-2.0-flash-lite-preview-02-05", # Gemini Studio Direct
             "mistral/mistral-small-latest", # Mistral Direct
         ]
