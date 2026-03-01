@@ -18,7 +18,21 @@ log = logging.getLogger(__name__)
 
 def _gh_cmd(args: List[str], ctx: ToolContext, timeout: int = 30, input_data: Optional[str] = None) -> str:
     """Run `gh` CLI command and return stdout or error string."""
-    cmd = ["gh"] + args
+    cmd_base = "gh"
+    
+    # Windows robust path check
+    if os.name == "nt":
+        common_paths = [
+            r"C:\Program Files\GitHub CLI\gh.exe",
+            r"C:\Program Files (x86)\GitHub CLI\gh.exe",
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), r"Programs\GitHub CLI\gh.exe"),
+        ]
+        for p in common_paths:
+            if os.path.exists(p):
+                cmd_base = p
+                break
+
+    cmd = [cmd_base] + args
     try:
         res = subprocess.run(
             cmd,
@@ -34,7 +48,7 @@ def _gh_cmd(args: List[str], ctx: ToolContext, timeout: int = 30, input_data: Op
             return f"⚠️ GH_ERROR: {err.split(chr(10))[0][:200]}"
         return res.stdout.strip()
     except FileNotFoundError:
-        return "⚠️ GH_ERROR: `gh` CLI not found."
+        return f"⚠️ GH_ERROR: `gh` CLI not found (tried '{cmd_base}')."
     except subprocess.TimeoutExpired:
         return f"⚠️ GH_TIMEOUT: exceeded {timeout}s."
     except Exception as e:

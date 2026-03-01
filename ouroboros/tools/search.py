@@ -12,7 +12,7 @@ from ouroboros.tools.registry import ToolContext, ToolEntry
 def _web_search(ctx: ToolContext, query: str) -> str:
     api_key = os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
-        return json.dumps({"error": "OPENAI_API_KEY not set; web_search unavailable."})
+        return json.dumps({"error": "OPENAI_API_KEY not set. Use 'browser_open_url' or 'browser_search' instead for research."})
     try:
         from openai import OpenAI
         client = OpenAI(api_key=api_key)
