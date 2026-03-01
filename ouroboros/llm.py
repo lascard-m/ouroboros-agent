@@ -225,72 +225,92 @@ class LLMClient:
         max_tokens: int = 16384,
         tool_choice: str = "auto",
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        """Single LLM call. Returns: (response_message_dict, usage_dict with cost)."""
-        provider, model_name = self._parse_provider_from_model(model)
-        client = self._get_client_for_provider(provider)
+        """Single LLM call with fallback support. Returns: (response_message_dict, usage_dict with cost)."""
         
-        # Prepare arguments
-        env_max = int(os.environ.get("OUROBOROS_MAX_TOKENS", "0"))
-        if env_max > 0:
-            max_tokens = min(max_tokens, env_max)
+        # Define fallback chain for free models
+        fallbacks = [
+            model, # Try requested first
+            "openrouter/openrouter/free", # Mistral Small on OpenRouter
+            "gemini/google/gemini-2.0-flash-lite-preview-02-05:free", # Gemini Studio Direct
+            "openrouter/google/gemini-2.0-flash-lite-preview-02-05:free", # Gemini on OpenRouter
+            "mistral/mistral-small-latest", # Mistral Direct (if free tier available)
+        ]
+        
+        # Remove duplicates while preserving order
+        unique_fallbacks = []
+        for f in fallbacks:
+            if f not in unique_fallbacks:
+                unique_fallbacks.append(f)
+        
+        last_error = None
+        for current_model in unique_fallbacks:
+            try:
+                provider, model_name = self._parse_provider_from_model(current_model)
+                client = self._get_client_for_provider(provider)
+                
+                # Prepare arguments
+                env_max = int(os.environ.get("OUROBOROS_MAX_TOKENS", "0"))
+                actual_max = max_tokens
+                if env_max > 0:
+                    actual_max = min(max_tokens, env_max)
 
-        kwargs = {
-            "model": model_name,
-            "messages": messages,
-            "max_tokens": max_tokens,
-        }
-
-        if tools:
-            kwargs["tools"] = tools
-            kwargs["tool_choice"] = tool_choice
-
-        # Provider-specific logic
-        if provider == "openrouter":
-            effort = normalize_reasoning_effort(reasoning_effort)
-            extra_body: Dict[str, Any] = {
-                "reasoning": {"effort": effort, "exclude": True},
-            }
-            # Pin Anthropic models to Anthropic provider for prompt caching
-            if model_name.startswith("anthropic/"):
-                extra_body["provider"] = {
-                    "order": ["Anthropic"],
-                    "allow_fallbacks": False,
-                    "require_parameters": True,
+                kwargs = {
+                    "model": model_name,
+                    "messages": messages,
+                    "max_tokens": actual_max,
                 }
-            kwargs["extra_body"] = extra_body
 
-        try:
-            completion = client.chat.completions.create(**kwargs)
-        except Exception as e:
-            print(f"Error calling LLM ({provider}): {e}")
-            raise e
+                if tools:
+                    kwargs["tools"] = tools
+                    kwargs["tool_choice"] = tool_choice
 
-        response_message = completion.choices[0].message
-        usage = completion.usage
+                # Provider-specific logic
+                if provider == "openrouter":
+                    effort = normalize_reasoning_effort(reasoning_effort)
+                    extra_body: Dict[str, Any] = {
+                        "reasoning": {"effort": effort, "exclude": True},
+                    }
+                    if model_name.startswith("anthropic/"):
+                        extra_body["provider"] = {
+                            "order": ["Anthropic"],
+                            "allow_fallbacks": False,
+                            "require_parameters": True,
+                        }
+                    kwargs["extra_body"] = extra_body
 
-        # Convert usage to dict and add cost
-        usage_dict = {
-            "prompt_tokens": usage.prompt_tokens,
-            "completion_tokens": usage.completion_tokens,
-            "total_tokens": usage.total_tokens,
-            "cost": 0.0,  # Default cost
-        }
+                completion = client.chat.completions.create(**kwargs)
+                
+                response_message = completion.choices[0].message
+                usage = completion.usage
 
-        # Only calculate cost for OpenRouter for now
-        if provider == "openrouter":
-            # Attempt to get cost from response or fallback to generation API
-            if hasattr(usage, "cost") and usage.cost is not None:
-                usage_dict["cost"] = usage.cost
-            else:
-                # OpenRouter fallback
-                resp_dict = completion.model_dump()
-                gen_id = resp_dict.get("id") or ""
-                if gen_id:
-                    cost = self._fetch_generation_cost(gen_id, provider)
-                    if cost is not None:
-                        usage_dict["cost"] = cost
+                usage_dict = {
+                    "prompt_tokens": usage.prompt_tokens,
+                    "completion_tokens": usage.completion_tokens,
+                    "total_tokens": usage.total_tokens,
+                    "cost": 0.0,
+                }
 
-        return response_message.model_dump(), usage_dict
+                if provider == "openrouter":
+                    if hasattr(usage, "cost") and usage.cost is not None:
+                        usage_dict["cost"] = usage.cost
+                    else:
+                        resp_dict = completion.model_dump()
+                        gen_id = resp_dict.get("id") or ""
+                        if gen_id:
+                            cost = self._fetch_generation_cost(gen_id, provider)
+                            if cost is not None:
+                                usage_dict["cost"] = cost
+
+                return response_message.model_dump(), usage_dict
+
+            except Exception as e:
+                last_error = e
+                log.warning(f"LLM call failed for {current_model} ({provider}): {e}. Trying fallback if available.")
+                continue
+        
+        # If all fail
+        print(f"All LLM fallbacks failed. Last error: {last_error}")
+        raise last_error
 
     def vision_query(
         self,
