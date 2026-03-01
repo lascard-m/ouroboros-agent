@@ -235,6 +235,7 @@ class LLMClient:
         # Define fallback chain for free models
         fallbacks = [
             model, # Try requested first
+            "openrouter/free", # Global free router on OpenRouter
             "openrouter/mistralai/mistral-7b-instruct:free", # Valid free ID on OpenRouter
             "openrouter/google/gemini-2.0-flash-lite-001", # High availability free model on OpenRouter
             "gemini/gemini-2.0-flash-lite-preview-02-05", # Gemini Studio Direct
