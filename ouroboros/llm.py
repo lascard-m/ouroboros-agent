@@ -190,7 +190,7 @@ class LLMClient:
                 return "openrouter", "openrouter/free"
             if provider in ["openrouter", "openai", "mistral", "gemini", "anthropic"]:
                 return provider, model_id
-        return self.default_provider, model
+        return "openrouter", model
 
     def _fetch_generation_cost(self, generation_id: str, provider: str = "openrouter") -> Optional[float]:
         """Fetch cost from OpenRouter Generation API as fallback."""
@@ -323,7 +323,10 @@ class LLMClient:
                 continue
         
         # If all fail
-        print(f"All LLM fallbacks failed. Last error: {last_error}")
+        try:
+            print(f"All LLM fallbacks failed. Last error: {last_error}")
+        except UnicodeEncodeError:
+            print(f"All LLM fallbacks failed. Last error: {repr(last_error)}")
         raise last_error
 
     def vision_query(
