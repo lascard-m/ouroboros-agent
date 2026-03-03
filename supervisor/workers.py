@@ -274,7 +274,13 @@ def auto_resume_after_restart() -> None:
 # Worker process
 # ---------------------------------------------------------------------------
 
-def worker_main(wid: int, in_q: Any, out_q: Any, repo_dir: str, drive_root: str) -> None:
+def worker_main(wid: int, in_q: mp.Queue, out_q: mp.Queue, repo_dir: str, drive_root: str) -> None:
+    """Worker process main loop. Runs in subprocess, handles tasks from queue."""
+    # Force import jiter to avoid subprocess import issues
+    try:
+        import jiter
+    except ImportError:
+        pass
     import sys as _sys
     import traceback as _tb
     import pathlib as _pathlib

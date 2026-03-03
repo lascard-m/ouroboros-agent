@@ -3,3 +3,4 @@ requests
 playwright
 playwright-stealth
 python-dotenv
+jiter>=0.8.0

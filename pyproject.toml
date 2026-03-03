@@ -4,6 +4,15 @@ version = "6.2.0"
 description = "Self-creating agent"
 requires-python = ">=3.10"
 
+dependencies = [
+    "openai>=1.0.0",
+    "requests",
+    "playwright",
+    "playwright-stealth",
+    "python-dotenv",
+    "jiter>=0.8.0"
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
