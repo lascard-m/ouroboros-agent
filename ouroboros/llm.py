@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional, Tuple
 # Force import jiter to avoid subprocess import issues
 try:
     import jiter
+    import jiter.jiter
 except ImportError:
     pass
 

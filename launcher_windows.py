@@ -20,7 +20,7 @@ def install_launcher_deps() -> None:
     print("1. Installation des dépendances...")
     try:
         subprocess.run(
-            [sys.executable, "-m", "pip", "install", "-q", "openai>=1.0.0", "requests", "python-dotenv"],
+            [sys.executable, "-m", "pip", "install", "-q", "openai>=1.0.0", "requests", "python-dotenv", "jiter>=0.8.0"],
             check=True,
         )
     except Exception as e:
