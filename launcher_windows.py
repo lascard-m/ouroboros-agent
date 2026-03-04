@@ -33,6 +33,11 @@ def main():
     from dotenv import load_dotenv
     load_dotenv()
 
+    # Fix for Python 3.13 multiprocessing on Windows
+    import multiprocessing
+    multiprocessing.set_start_method('spawn', force=True)
+    os.environ["PYTHONPATH"] = ""
+
     DRIVE_ROOT = pathlib.Path("./data").resolve()
     REPO_DIR = pathlib.Path(".").resolve()
 
