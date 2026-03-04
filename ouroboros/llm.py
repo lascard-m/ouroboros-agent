@@ -254,6 +254,7 @@ class LLMClient:
         fallbacks = [
             model, # Try requested first
             "openrouter/free", # Global free router on OpenRouter (requires full ID)
+            "ollama/llama3.2", # Local Ollama fallback
             "mistralai/mistral-small-3.1-24b-instruct:free", # Stable Mistral replacement
             "meta-llama/llama-3.3-70b-instruct:free", # Powerful 70B model
             "google/gemini-2.0-flash-lite-preview-02-05:free", # Gemini Free tier

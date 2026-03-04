@@ -51,7 +51,7 @@ def main():
     MAX_WORKERS = int(os.environ.get("OUROBOROS_MAX_WORKERS", "5"))
 
     # LLM Models
-    MODEL_MAIN = os.environ.get("OUROBOROS_MODEL", "mistralai/mistral-7b-instruct:free")
+    MODEL_MAIN = os.environ.get("OUROBOROS_MODEL", "openrouter/free")
     MODEL_CODE = os.environ.get("OUROBOROS_MODEL_CODE", MODEL_MAIN)
     MODEL_LIGHT = os.environ.get("OUROBOROS_MODEL_LIGHT", MODEL_MAIN)
 
