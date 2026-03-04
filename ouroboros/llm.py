@@ -12,12 +12,6 @@ import os
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-# Force import jiter to avoid subprocess import issues
-try:
-    import jiter
-except ImportError:
-    pass
-
 import ollama
 
 log = logging.getLogger(__name__)
@@ -253,10 +247,10 @@ class LLMClient:
         fallbacks = [
             model, # Try requested first
             "openrouter/free", # Global free router on OpenRouter (requires full ID)
+            "google/gemini-2.0-flash-lite-preview-02-05:free", # Gemini Free tier first
+            "gemini/gemini-2.0-flash-lite-preview-02-05", # Gemini Studio Direct
             "mistralai/mistral-small-3.1-24b-instruct:free", # Stable Mistral replacement
             "meta-llama/llama-3.3-70b-instruct:free", # Powerful 70B model
-            "google/gemini-2.0-flash-lite-preview-02-05:free", # Gemini Free tier
-            "gemini/gemini-2.0-flash-lite-preview-02-05", # Gemini Studio Direct
             "mistral/mistral-large-latest", # Changed from Small to Large
         ]
         
