@@ -19,6 +19,8 @@ try:
 except ImportError:
     pass
 
+import ollama
+
 log = logging.getLogger(__name__)
 
 DEFAULT_LIGHT_MODEL = "google/gemini-3-pro-preview"
@@ -140,12 +142,18 @@ class LLMClient:
             }
         
         # Ollama
-        if os.environ.get("OLLAMA_BASE_URL"):
-            self._clients["ollama"] = {
-                "client": None,
-                "api_key": "ollama",
-                "base_url": os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
-            }
+        self._clients["ollama"] = {
+            "client": None,
+            "api_key": "ollama",
+            "base_url": os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+        }
+        
+        # vLLM
+        self._clients["vllm"] = {
+            "client": None,
+            "api_key": "",
+            "base_url": os.environ.get("VLLM_BASE_URL", "http://localhost:8000/v1")
+        }
         
         # Mistral
         mistral_key = os.environ.get("MISTRAL_API_KEY", "")
@@ -195,7 +203,7 @@ class LLMClient:
             if provider == "openrouter" and model_id == "free":
                 # Special case: 'openrouter/free' is a valid model ID on OpenRouter
                 return "openrouter", "openrouter/free"
-            if provider in ["openrouter", "openai", "mistral", "gemini", "anthropic"]:
+            if provider in ["openrouter", "openai", "mistral", "gemini", "anthropic", "ollama", "vllm"]:
                 return provider, model_id
         return "openrouter", model
 
