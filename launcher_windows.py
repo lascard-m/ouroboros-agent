@@ -53,7 +53,7 @@ def main():
     GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
     GITHUB_USER = os.environ.get("GITHUB_USER")
     GITHUB_REPO = os.environ.get("GITHUB_REPO")
-    MAX_WORKERS = int(os.environ.get("OUROBOROS_MAX_WORKERS", "5"))
+    MAX_WORKERS = int(os.environ.get("OUROBOROS_MAX_WORKERS", "1"))
 
     # LLM Models
     MODEL_MAIN = os.environ.get("OUROBOROS_MODEL", "openrouter/free")
