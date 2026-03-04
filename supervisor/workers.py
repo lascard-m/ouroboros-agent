@@ -21,6 +21,9 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+# Fix for Python 3.13 multiprocessing on Windows
+mp.set_start_method('spawn', force=True)
+
 from supervisor.state import load_state, append_jsonl
 from supervisor import git_ops
 from supervisor.telegram import send_with_budget
