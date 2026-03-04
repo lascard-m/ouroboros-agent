@@ -143,18 +143,19 @@ def main():
     # ----------------------------
     # 6) Background consciousness
     # ----------------------------
-    from ouroboros.consciousness import BackgroundConsciousness
-    _consciousness = BackgroundConsciousness(
-        drive_root=DRIVE_ROOT,
-        repo_dir=REPO_DIR,
-        event_queue=get_event_q(),
-        owner_chat_id_fn=lambda: load_state().get("owner_chat_id"),
-    )
-    try:
-        _consciousness.start()
-        print("Background consciousness started.")
-    except Exception as e:
-        print(f"Consciousness start failed: {e}")
+    # from ouroboros.consciousness import BackgroundConsciousness
+    # _consciousness = BackgroundConsciousness(
+    #     drive_root=DRIVE_ROOT,
+    #     repo_dir=REPO_DIR,
+    #     event_queue=get_event_q(),
+    #     owner_chat_id_fn=lambda: load_state().get("owner_chat_id"),
+    # )
+    # try:
+    #     _consciousness.start()
+    #     print("Background consciousness started.")
+    # except Exception as e:
+    #     print(f"Consciousness start failed: {e}")
+    _consciousness = None
 
     print(f"Ouroboros lancé avec {MAX_WORKERS} workers. Tasks restaurées: {restored_pending}")
 
