@@ -300,8 +300,28 @@ def checkout_and_reset(branch: str, reason: str = "unspecified",
         )
         return False, msg
 
-    subprocess.run(["git", "checkout", branch], cwd=str(REPO_DIR), check=True)
-    subprocess.run(["git", "reset", "--hard", f"origin/{branch}"], cwd=str(REPO_DIR), check=True)
+    # Check if already on target branch - skip checkout if so
+    current_branch = subprocess.run(
+        ["git", "branch", "--show-current"], cwd=str(REPO_DIR),
+        capture_output=True, text=True,
+    ).stdout.strip()
+    
+    if current_branch != branch:
+        subprocess.run(["git", "checkout", branch], cwd=str(REPO_DIR), check=True)
+    else:
+        # Already on target branch, log and continue
+        append_jsonl(
+            DRIVE_ROOT / "logs" / "supervisor.jsonl",
+            {
+                "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "type": "already_on_target_branch",
+                "target_branch": branch, "reason": reason,
+            },
+        )
+    
+    # Only reset if not already on target branch or if explicitly requested
+    if current_branch != branch:
+        subprocess.run(["git", "reset", "--hard", f"origin/{branch}"], cwd=str(REPO_DIR), check=True)
     # Clean __pycache__ to prevent stale bytecode (git checkout may not update mtime)
     for p in REPO_DIR.rglob("__pycache__"):
         shutil.rmtree(p, ignore_errors=True)
