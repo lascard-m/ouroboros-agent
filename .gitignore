@@ -5,6 +5,38 @@
 #! .windsurf/memory/
 #! .windsurf/mcp/
 
+# Trae (Clone du cerveau)
+.trae/
+!.trae/settings.json
+!.trae/cascade/
+!.trae/memory/
+!.trae/mcp/
+!.trae/knowledge/
+!.trae/workflows/
+!.trae/scripts/
+!.trae/memory-database/cache/
+!.trae/memory-database/graph/
+!.trae/memory-database/vector/
+!.trae/semantic-cache-data/
+
+# Windsurf
+.windsurf/
+!.windsurf/settings.json
+!.windsurf/cascade/
+!.windsurf/memory/
+!.windsurf/mcp/
+!.windsurf/knowledge/
+!.windsurf/workflows/
+!.windsurf/scripts/
+!.windsurf/memory-database/cache/
+!.windsurf/memory-database/graph/
+!.windsurf/memory-database/vector/
+!.windsurf/semantic-cache-data/
+
+# Semantic Cache
+semantic-cache-data/
+ourobouros/semantic-cache-data/
+
 # Memory DB (Locally stored databases)
 memory-database/cache/*.db
 memory-database/graph/*.db

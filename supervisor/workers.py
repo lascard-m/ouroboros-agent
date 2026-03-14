@@ -21,8 +21,15 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-# Fix for Python 3.13 multiprocessing on Windows
-mp.set_start_method('spawn', force=True)
+# Fix for Python 3.13 multiprocessing - check before setting to avoid GIL issues
+# Only set if not already configured to prevent conflicts with launcher
+try:
+    current_method = mp.get_start_method(allow_none=True)
+    if current_method is None:
+        mp.set_start_method('spawn', force=True)
+except RuntimeError:
+    # Already set - that's fine, keep existing method
+    pass
 
 from supervisor.state import load_state, append_jsonl
 from supervisor import git_ops

@@ -26,6 +26,28 @@ def install_launcher_deps() -> None:
     except Exception as e:
         print(f"⚠ Erreur lors de l'installation des dépendances: {e}")
 
+def _configure_multiprocessing() -> None:
+    """Configure multiprocessing for Python 3.13+ compatibility."""
+    import multiprocessing as mp
+    
+    # Python 3.13+ on Windows requires specific multiprocessing configuration
+    # Set spawn method early and only once to avoid GIL issues
+    try:
+        # Try to get current start method - if not set, set it
+        current_method = mp.get_start_method(allow_none=True)
+        if current_method is None:
+            mp.set_start_method('spawn', force=True)
+        elif current_method != 'spawn':
+            # Only force if explicitly required
+            if os.environ.get('OUROBOROS_FORCE_SPAWN', '').lower() == 'true':
+                mp.set_start_method('spawn', force=True)
+    except RuntimeError:
+        # Already set - that's fine, just ensure consistency
+        pass
+    
+    # Clear PYTHONPATH to avoid module loading issues with spawn
+    os.environ["PYTHONPATH"] = ""
+
 def main():
     # ----------------------------
     # 1) Load environment
@@ -33,10 +55,12 @@ def main():
     from dotenv import load_dotenv
     load_dotenv()
 
-    # Fix for Python 3.13 multiprocessing on Windows
-    import multiprocessing
-    multiprocessing.set_start_method('spawn', force=True)
-    os.environ["PYTHONPATH"] = ""
+    # Configure multiprocessing BEFORE any other imports that might use it
+    _configure_multiprocessing()
+    
+    # Extra safety: also force environment variable for workers
+    os.environ["OUROBOROS_WORKER_START_METHOD"] = "spawn"
+    os.environ["OUROBOROS_FORCE_SPAWN"] = "true"
 
     DRIVE_ROOT = pathlib.Path("./data").resolve()
     REPO_DIR = pathlib.Path(".").resolve()
