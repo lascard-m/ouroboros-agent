@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import pathlib
+import platform
 import shutil
 import subprocess
 import sys
@@ -372,8 +373,10 @@ def sync_runtime_dependencies(reason: str) -> Tuple[bool, str]:
 
 
 def import_test() -> Dict[str, Any]:
+    # Use python on Windows, python3 on other platforms
+    python_exe = "python" if platform.system() == "Windows" else "python3"
     r = subprocess.run(
-        ["python3", "-c", "import ouroboros, ouroboros.agent; print('import_ok')"],
+        [python_exe, "-c", "import ouroboros, ouroboros.agent; print('import_ok')"],
         cwd=str(REPO_DIR),
         capture_output=True, text=True,
     )

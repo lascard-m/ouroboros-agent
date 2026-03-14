@@ -5,6 +5,9 @@ import logging
 import os, sys, json, time, uuid, pathlib, subprocess, datetime, threading, queue as _queue_mod
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+# Required for Windows multiprocessing with spawn
+from multiprocessing import freeze_support
+
 log = logging.getLogger(__name__)
 
 # Install launcher deps
@@ -28,7 +31,9 @@ for sub in ["state", "logs", "memory", "index", "locks", "archive"]:
     (DRIVE_ROOT / sub).mkdir(parents=True, exist_ok=True)
 
 # Set default env vars if not set
-os.environ.setdefault("OUROBOROS_WORKER_START_METHOD", "fork")
+import platform
+_DEFAULT_WORKER_METHOD = "spawn" if platform.system() == "Windows" else "fork"
+os.environ.setdefault("OUROBOROS_WORKER_START_METHOD", _DEFAULT_WORKER_METHOD)
 os.environ.setdefault("OUROBOROS_DIAG_HEARTBEAT_SEC", "30")
 os.environ.setdefault("OUROBOROS_DIAG_SLOW_CYCLE_SEC", "20")
 os.environ.setdefault("PYTHONUNBUFFERED", "1")
@@ -107,42 +112,45 @@ if not ok:
     sys.exit(1)
 
 # Start workers
-kill_workers()
-spawn_workers(MAX_WORKERS)
-restored_pending = restore_pending_from_snapshot()
-persist_queue_snapshot(reason="startup")
-
-print(f"Ouroboros launched locally with {MAX_WORKERS} workers. Restored {restored_pending} pending tasks.")
-
-# Start background consciousness
-from ouroboros.consciousness import BackgroundConsciousness
-
-_consciousness = BackgroundConsciousness(
-    drive_root=DRIVE_ROOT,
-    repo_dir=REPO_DIR,
-    event_queue=get_event_q(),
-    owner_chat_id_fn=lambda: None,  # No Telegram
-)
-
-try:
-    _consciousness.start()
-    print("Background consciousness started.")
-except Exception as e:
-    print(f"Consciousness start failed: {e}")
-
-# Simple local loop (no Telegram polling)
-print("Ouroboros is running locally. Use /status, /bg, etc. via console input (not implemented yet). Press Ctrl+C to stop.")
-
-try:
-    while True:
-        time.sleep(1)
-        ensure_workers_healthy()
-        enforce_task_timeouts()
-        enqueue_evolution_task_if_needed()
-        assign_tasks()
-        persist_queue_snapshot(reason="main_loop")
-except KeyboardInterrupt:
-    print("Stopping Ouroboros...")
+if __name__ == '__main__':
+    freeze_support()
+    
     kill_workers()
-    _consciousness.stop()
-    print("Ouroboros stopped.")
+    spawn_workers(MAX_WORKERS)
+    restored_pending = restore_pending_from_snapshot()
+    persist_queue_snapshot(reason="startup")
+
+    print(f"Ouroboros launched locally with {MAX_WORKERS} workers. Restored {restored_pending} pending tasks.")
+
+    # Start background consciousness
+    from ouroboros.consciousness import BackgroundConsciousness
+
+    _consciousness = BackgroundConsciousness(
+        drive_root=DRIVE_ROOT,
+        repo_dir=REPO_DIR,
+        event_queue=get_event_q(),
+        owner_chat_id_fn=lambda: None,  # No Telegram
+    )
+
+    try:
+        _consciousness.start()
+        print("Background consciousness started.")
+    except Exception as e:
+        print(f"Consciousness start failed: {e}")
+
+    # Simple local loop (no Telegram polling)
+    print("Ouroboros is running locally. Use /status, /bg, etc. via console input (not implemented yet). Press Ctrl+C to stop.")
+
+    try:
+        while True:
+            time.sleep(1)
+            ensure_workers_healthy()
+            enforce_task_timeouts()
+            enqueue_evolution_task_if_needed()
+            assign_tasks()
+            persist_queue_snapshot(reason="main_loop")
+    except KeyboardInterrupt:
+        print("Stopping Ouroboros...")
+        kill_workers()
+        _consciousness.stop()
+        print("Ouroboros stopped.")
